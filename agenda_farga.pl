@@ -21,8 +21,9 @@ use strict;
 #	return: array d'enllaços
 
 
-sub get_event_links($mech)
+sub get_event_links
 {
+	my ($mech) = @_;
 	##
 	#  Agafem tots els enllaços que siguin de l'agenda
 
@@ -46,9 +47,11 @@ sub get_event_links($mech)
 #  params: una url d'un esdeveniment de lafarga
 #  return: hash amb les dades de l'esdeveniment
 
-sub get_event($domain, $link)
+sub get_event
 {
-	my $dom = pQuery($domain.$link->url);
+	my ($link) = @_;
+
+	my $dom = pQuery($link->url);
 
 	my $title    = $dom->find('.content-bottom h2')->text();
 	my $date     = $dom->find('.field-field-esdeveniment-data')->text();
@@ -73,8 +76,10 @@ sub get_event($domain, $link)
 #  params: array d'esdeveniments
 #  return: string cos del missatge que s'ha d'enviar
 
-sub compose_mail(@events)
+sub compose_mail
 {
+	my (@events) = @_;
+
 	my $body = "
 		Propers esdevenimetns de cultura i programari lliure anunciats
 		a lafarga.cat:
@@ -93,6 +98,7 @@ my $one_year_later  = DateCalc('today', '+ 1 year');
 
 my $domain = "http://lafarga.cat/";
 
+my @events;
 while ($date <= $one_year_later)
 {
 	my @formats = ('%d', '%m', '%Y');
