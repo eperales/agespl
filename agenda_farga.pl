@@ -13,6 +13,58 @@ use strict;
 
 
 ##
+#  Agafem els esdeveniments de d'aqui 15 dies i fins a un any
+
+my $date            = DateTime->now;
+my $one_year_later  = $date->clone->add(years => 1);
+
+my $domain = "http://lafarga.cat/";
+
+my @events;
+while ( DateTime->compare($date, $one_year_later) <= 0 )
+{
+	my @formats = ('%d', '%m', '%Y');
+	my ($day, $month, $year) = $date->strftime(@formats);
+
+	##
+	#  Accedim a l'agenda del dia en questió
+
+	my $url = "$domain/agenda/$year-$month-$day";
+
+	my $mech = WWW::Mechanize->new();
+
+	$mech->get($url);
+
+	if ($mech->success())
+	{
+		##
+		#  Obtenim els esdeveniments del dia
+		
+		my @event_links = get_event_links($mech);
+
+		print(Dumper(@event_links));
+
+#		##
+#		#  Per a cada esdeveniment, accedim a la seva pàgina per
+#		#  obtenir-ne les dades concretes
+#
+#		foreach my $link (@event_links)
+#		{
+#			my %event = get_event($domain.$link);			
+#			push(@events, %event);
+#		}
+
+		##
+		#  Avançem el dia
+
+		$date->add(days => 1);
+	}
+
+#	compose_mail(@events);
+#	send_mail();
+}
+
+##
 #  get_event_liks
 #  Donat un objecte Mechanize que conté una pàgina de l'agenda de
 #  lafarga, cerca tots els enllaços que siguin de tipus esdeveniment
@@ -90,57 +142,4 @@ sub compose_mail
 		
 	}
 }
-##
-#  Agafem els esdeveniments de d'aqui 15 dies i fins a un any
-
-my $date            = DateCalc('today', '+ 2 weeks');
-my $one_year_later  = DateCalc('today', '+ 1 year');
-
-my $domain = "http://lafarga.cat/";
-
-my @events;
-while ($date <= $one_year_later)
-{
-	my @formats = ('%d', '%m', '%Y');
-	my ($day, $month, $year) = UnixDate($date, @formats);
-
-	##
-	#  Accedim a l'agenda del dia en questió
-
-	my $url = "$domain/agenda/$year-$month-$day";
-
-	my $mech = WWW::Mechanize->new();
-
-	$mech->get($url);
-
-	if ($mech->success())
-	{
-		##
-		#  Obtenim els esdeveniments del dia
-		
-		my @event_links = get_event_links($mech);
-
-		print(Dumper(@event_links));
-		die;
-
-		##
-		#  Per a cada esdeveniment, accedim a la seva pàgina per
-		#  obtenir-ne les dades concretes
-
-		foreach my $link (@event_links)
-		{
-			my %event = get_event($domain.$link);			
-			push(@events, %event);
-		}
-
-		##
-		#  Avançem el dia
-
-		$date = DateCalc($date, '+ 1 day');
-	}
-
-	compose_mail(@events);
-	send_mail();
-}
-
 
