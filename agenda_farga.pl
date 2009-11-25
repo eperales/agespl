@@ -2,7 +2,7 @@
 
 use WWW::Mechanize;
 use DateTime;
-use Date::Manip;
+use Test::Deep::NoTest;
 
 use pQuery;
 
@@ -16,11 +16,16 @@ use strict;
 #  Agafem els esdeveniments de d'aqui 15 dies i fins a un any
 
 my $date            = DateTime->now;
-my $one_year_later  = $date->clone->add(years => 1);
+my $one_year_later  = $date->clone->add(months => 1);
 
 my $domain = "http://lafarga.cat/";
 
 my @events;
+my $body = "
+Propers esdeveniments de programari lliure anunciats a lafarga.cat:
+
+\t";
+
 while ( DateTime->compare($date, $one_year_later) <= 0 )
 {
 	my @formats = ('%d', '%m', '%Y');
@@ -42,17 +47,21 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 		
 		my @event_links = get_event_links($mech);
 
-		print(Dumper(@event_links));
 
-#		##
-#		#  Per a cada esdeveniment, accedim a la seva pàgina per
-#		#  obtenir-ne les dades concretes
-#
-#		foreach my $link (@event_links)
-#		{
-#			my %event = get_event($domain.$link);			
-#			push(@events, %event);
-#		}
+		##
+		#  Per a cada esdeveniment, accedim a la seva pàgina per
+		#  obtenir-ne les dades concretes
+
+		foreach my $link (@event_links)
+		{
+			my $event = get_event($domain, $link);
+
+			##
+			#  Afegim l'esdeveniment a la llista, si no el teniem
+
+			#unless eq_deeply($a, $b);
+			push(@events, $event);
+		}
 
 		##
 		#  Avançem el dia
@@ -60,9 +69,11 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 		$date->add(days => 1);
 	}
 
-#	compose_mail(@events);
+	$body .= compose_mail(@events);
 #	send_mail();
 }
+
+print $body, "\n";
 
 ##
 #  get_event_liks
@@ -101,23 +112,29 @@ sub get_event_links
 
 sub get_event
 {
-	my ($link) = @_;
+	my ($domain, $link) = @_;
 
-	my $dom = pQuery($link->url);
+	my $dom = pQuery($domain.$link->url);
 
 	my $title    = $dom->find('.content-bottom h2')->text();
 	my $date     = $dom->find('.field-field-esdeveniment-data')->text();
 	my $location = $dom->find('.field-field-ubicacio')->text();
 	my @desc     = $dom->find('.content-bottom .content p');
 
-	my %event = (
+	my $description;
+	foreach my $desc (@desc)
+	{
+		$description .= $desc->text()."\n";
+	}
+
+	my $event = {
 		title       => $title,
 		date        => $date,
 		location    => $location,
-		description => @desc,
-	);
+		description => $description,
+	};
 
-	return %event;
+	return $event;
 }
 
 ##
@@ -132,14 +149,14 @@ sub compose_mail
 {
 	my (@events) = @_;
 
-	my $body = "
-		Propers esdevenimetns de cultura i programari lliure anunciats
-		a lafarga.cat:
+	my $body = '';
 
-	";
 	foreach my $event (@events)
 	{
-		
+		$body .= join("\n\t", values(%$event));
+		$body .= "\n\n\t";
 	}
+
+	return $body;
 }
 
