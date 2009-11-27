@@ -15,8 +15,8 @@ use strict;
 ##
 #  Agafem els esdeveniments de d'aqui 15 dies i fins a un any
 
-my $date            = DateTime->now;
-my $one_year_later  = $date->clone->add(months => 1);
+my $date            = DateTime->now->add(weeks => 2);
+my $one_year_later  = $date->clone->add(weeks => 1);
 
 my $domain = "http://lafarga.cat/";
 
@@ -47,7 +47,6 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 		
 		my @event_links = get_event_links($mech);
 
-
 		##
 		#  Per a cada esdeveniment, accedim a la seva pàgina per
 		#  obtenir-ne les dades concretes
@@ -59,8 +58,15 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 			##
 			#  Afegim l'esdeveniment a la llista, si no el teniem
 
-			#unless eq_deeply($a, $b);
-			push(@events, $event);
+			my $trobat = 0;
+			my $i = 0;
+			while (!$trobat and $i< scalar(@events))
+			{
+				$trobat = $trobat || eq_deeply($events[$i], $event);
+				$i++;
+			}
+
+			push(@events, $event) if !$trobat;
 		}
 
 		##
@@ -69,10 +75,11 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 		$date->add(days => 1);
 	}
 
-	$body .= compose_mail(@events);
-#	send_mail();
+
 }
 
+	$body .= compose_mail(@events);
+#	send_mail();
 print $body, "\n";
 
 ##
@@ -119,19 +126,19 @@ sub get_event
 	my $title    = $dom->find('.content-bottom h2')->text();
 	my $date     = $dom->find('.field-field-esdeveniment-data')->text();
 	my $location = $dom->find('.field-field-ubicacio')->text();
-	my @desc     = $dom->find('.content-bottom .content p');
+	#my @desc     = $dom->find('.content-bottom .content p');
 
-	my $description;
-	foreach my $desc (@desc)
-	{
-		$description .= $desc->text()."\n";
-	}
+	#my $description;
+	#foreach my $desc (@desc)
+	#{
+	#	$description .= $desc->text()."\n";
+	#}
 
 	my $event = {
-		title       => $title,
+		title       => "*$title*",
 		date        => $date,
 		location    => $location,
-		description => $description,
+	#	description => $description,
 	};
 
 	return $event;
@@ -153,7 +160,7 @@ sub compose_mail
 
 	foreach my $event (@events)
 	{
-		$body .= join("\n\t", values(%$event));
+		$body .= join("\n\t", sort values(%$event));
 		$body .= "\n\n\t";
 	}
 
