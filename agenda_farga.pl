@@ -2,11 +2,9 @@
 
 use WWW::Mechanize;
 use DateTime;
-use Test::Deep::NoTest;
-
+use Test::Deep::NoTest qw(eq_deeply);
+use Mail::Sendmail qw(sendmail);
 use pQuery;
-
-use Data::Dumper;
 
 use warnings;
 use strict;
@@ -16,7 +14,7 @@ use strict;
 #  Agafem els esdeveniments de d'aqui 15 dies i fins a un any
 
 my $date            = DateTime->now->add(weeks => 2);
-my $one_year_later  = $date->clone->add(weeks => 1);
+my $one_year_later  = $date->clone->add(years => 1);
 
 my $domain = "http://lafarga.cat/";
 
@@ -36,6 +34,8 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 
 	my $url = "$domain/agenda/$year-$month-$day";
 
+	print("Obtenint esdeveniments per a $url\n");
+
 	my $mech = WWW::Mechanize->new();
 
 	$mech->get($url);
@@ -46,6 +46,11 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 		#  Obtenim els esdeveniments del dia
 		
 		my @event_links = get_event_links($mech);
+
+		if (scalar(@event_links) > 0)
+		{
+			print ("\tS'han trobat ", scalar(@event_links), " esdeveniments\n");
+		}
 
 		##
 		#  Per a cada esdeveniment, accedim a la seva pàgina per
@@ -79,8 +84,7 @@ while ( DateTime->compare($date, $one_year_later) <= 0 )
 }
 
 	$body .= compose_mail(@events);
-#	send_mail();
-print $body, "\n";
+	send_mail($body);
 
 ##
 #  get_event_liks
@@ -121,7 +125,9 @@ sub get_event
 {
 	my ($domain, $link) = @_;
 
-	my $dom = pQuery($domain.$link->url);
+	my $url = $domain.$link->url;
+
+	my $dom = pQuery($url);
 
 	my $title    = $dom->find('.content-bottom h2')->text();
 	my $date     = $dom->find('.field-field-esdeveniment-data')->text();
@@ -138,6 +144,7 @@ sub get_event
 		title       => "*$title*",
 		date        => $date,
 		location    => $location,
+		url			=> $url,
 	#	description => $description,
 	};
 
@@ -146,11 +153,11 @@ sub get_event
 
 ##
 #  compose_mail
-#  Donada una llista d'esdeveniments, construeix el mail que s'enviarà
-#  a la llista de caliu
+#  Donada una llista d'esdeveniments, construeix el cos del missatge
+#  que s'enviarà a la llista de caliu
 #
 #  params: array d'esdeveniments
-#  return: string cos del missatge que s'ha d'enviar
+#  return: string - cos del missatge que s'ha d'enviar
 
 sub compose_mail
 {
@@ -167,3 +174,25 @@ sub compose_mail
 	return $body;
 }
 
+##
+#  send_mail
+#  Envia un mail a la llista d'esdeveniments
+#
+#  params: string - cos del missatge
+#  return: void
+
+sub send_mail
+{
+	my ($body) = @_;
+
+	my %mail = (
+		From    => 'esdeveniments@cpl.upc.edu',
+		To      => 'esdeveniments@cpl.upc.edu',
+		Subject => 'Propers esdeveniments de Programari Lliure',
+		Message => $body,
+	);
+
+	sendmail(%mail) or die $Mail::Sendmail::error;
+
+	print "Missatge enviat correctament: \n", $Mail::Sendmail::log;
+}
